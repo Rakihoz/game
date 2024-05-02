@@ -4,24 +4,12 @@ let vx = 0;
 let vy = 0; 
 
 function setup() {
-  createCanvas(700, 600);
+  createCanvas(400, 400);
 }
 
 function draw() {
   background(220);
-  let backgroundImage;
 
-  function preload() {
-    backgroundImage = loadImage('background.jpg');
-  }
-
-  function setup() {
-    createCanvas(700, 600);
-  }
-
-  function draw() {
-    background(backgroundImage);
-  }
   fill(255, 0, 0);
   ellipse(x, y, 20, 20);
 
@@ -36,11 +24,14 @@ function draw() {
     }
 }
 
-if (keyIsDown(LEFT_ARROW)) {
-  ellipse-= 5;
-}
-if (keyIsDown(RIGHT_ARROW)) {
-  ellipse+= 5;
-}
+function keyPressed() {
+  if (key === ' ') {
+    vy = -5; 
+  }
+  if (key === '68') {
+    vx = -5;
+  }
+  if (key === '65') 
+    vx = 5;
 
 }
