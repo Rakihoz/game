@@ -1,109 +1,212 @@
-let x = 200; 
-let y = 300; 
-let vx = 0; 
-let vy = 0; 
-let health = 3; // Здоровье шарика
 
-let img;
-let enemyImg; // Изображение врага
-let enemies = [1]; // Массив врагов
-let platformY; // Y position of the platform
-let platformWidth = 200; // Width of the platform
-let gameStarted = false; // Добавлено: состояние игры
-
+let player;
+let bgImg;
+let enemyImg;
+let bulletImg;
+let lives = 4;
+let gameOver = false;
+let enemies = [];
+let bullets = [];
+let leftKeyPressed = false;
+let rightKeyPressed = false;
+let spaceKeyPressed = false;
+let lastBulletTime = 0; 
+const bulletCooldown = 500;
 function preload() {
-  img = loadImage('ЛЮТИЙ ЛЕЕЕЕЕЕЕЕЕЕЕЕЕЕЕЕЕЕЕЕС.jpeg');
-   enemyImg = loadImage('pistol-2132.png'); // Загрузка изображения врага
+  bgImg = loadImage('ЛЮТИЙ ЛЕЕЕЕЕЕЕЕЕЕЕЕЕЕЕЕЕЕЕЕС.jpeg');
+  enemyImg = loadImage('Без імені.png');
+  bulletImg = loadImage('bullet.png');
 }
 
 function setup() {
-  createCanvas(626,417);
-  image(enemyImg, 100, 100, 50, 50);
-  platformY = height / 2; // Set the platform to be in the center of the map
-
-  // Создание врагов
-  for (let i = 0; i < 5; i++) {
-    enemies[i] = { x: random(width), y: random(height), img: enemyImg, alive: true };
-  }
+  createCanvas(800, 600);
+  player = new Player();
 }
 
 function draw() {
-  if (gameStarted) {
-    image(img, 0, 0);
-    fill(255, 0, 0);
-    ellipse(x, y, 40, 40); 
+  background(bgImg);
 
-    vx *= 0.95; // Уменьшен коэффициент трения
-    vy += 0.1; 
-    x += vx;
-    y += vy;
+  if (!gameOver) {
+    player.update();
+    player.show();
+    player.shoot();
 
-    // Draw the platform
-    rect((width - platformWidth) / 2, platformY, platformWidth, 10);
+    fill(255);
+    textSize(12);
+    textAlign(LEFT, BOTTOM);
+    text("Управління:", 1, height - 50);
+    text("-Для переміщення використовуйте клавіші зі стрілками", 1, height - 30);
+    text("-Натисніть пробіл, щоб стріляти", 1, height - 10);
 
-    // Check if the ball is touching the platform
-    if (keyCode !== DOWN_ARROW) {
-      if (y + 20 >= platformY && y - 20 <= platformY + 10 && x > (width - platformWidth) / 2 && x < (width + platformWidth) / 2) {
-        vy = 0;
-        y = platformY - 20; // Keep the ball on the platform
-      }
-    }
-
-    if (y > height-20) {
-      y = height-20;  
-    }
-    if (x < 20 || x > width-20) {
-      vx = 0;
-      vy = 0;
-    }
-
-    // Рисуем врагов
-    for (let i = 0; i < enemies.length; i++) {
-      if (enemies[i].alive) {
-        image(enemies[i].img, enemies[i].x, enemies[i].y, enemies[i].img.width / 2, enemies[i].img.height / 2); // Уменьшен размер изображения врага
-
-        // Проверяем, есть ли контакт с врагом
-        let d = dist(x, y, enemies[i].x, enemies[i].y);
-        if (d < 20 + (enemies[i].img.width / 4)) {
-          if (y < enemies[i].y) {
-            enemies[i].alive = false; // Враг умирает, когда шарик прыгает на него
-          } else {
-            health--; // Здоровье уменьшается при контакте с врагом
-            if (health <= 0) {
-              gameStarted = false; // Игра окончена, если здоровье <= 0
-            }
-          }
+    for (let i = bullets.length - 1; i >= 0; i--) {
+      bullets[i].update();
+      bullets[i].show();
+      for (let j = enemies.length - 1; j >= 0; j--) {
+        if (bullets[i].hits(enemies[j])) {
+          enemies.splice(j, 1);
+          bullets.splice(i, 1);
+          break;
         }
       }
     }
 
-    // Рисуем здоровье
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      enemies[i].update();
+      enemies[i].show();
+      if (player.hits(enemies[i])) {
+        lives--;
+        if (lives <= 0) {
+          gameOver = true;
+          break;
+        }
+        enemies.splice(i, 1);
+      }
+    }
+
+    if (enemies.length < 5) {
+      enemies.push(new Enemy());
+    }
+
     fill(255);
     textSize(20);
-    text("Зарплата  : " + health, 10, 30);
+    text("Lives: " + lives, 10, 30);
   } else {
-    // Рисуем меню
-    background(0);
     fill(255);
     textSize(32);
-    text("Нажмите Enter, чтобы начать игру", width / 2 - 100, height / 2);
+    textAlign(CENTER, CENTER);
+    text("Game Over", width / 2, height / 2);
+    textSize(20);
+    text("Press Enter to restart", width / 2, height / 2 + 40);
   }
 }
 
+
 function keyPressed() {
-  if (key === ' ') {
-    vy = -5; 
+  if (!gameOver) {
+    if (keyCode === UP_ARROW) {
+      player.jump();
+    } else if (keyCode === LEFT_ARROW) {
+      leftKeyPressed = true;
+    } else if (keyCode === RIGHT_ARROW) {
+      rightKeyPressed = true;
+    } else if (keyCode === 32) {
+      spaceKeyPressed = true;
+    }
+  } else {
+    if (keyCode === ENTER) {
+      restartGame();
+    }
   }
+}
+
+function keyReleased() {
   if (keyCode === LEFT_ARROW) {
-    vx = -4; // Увеличена скорость движения влево
+    leftKeyPressed = false;
+  } else if (keyCode === RIGHT_ARROW) {
+    rightKeyPressed = false;
+  } else if (keyCode === 32) {
+    spaceKeyPressed = false;
   }
-  if (keyCode === RIGHT_ARROW) {
-    vx = 4; // Увеличена скорость движения вправо
+}
+
+function restartGame() {
+  lives = 4;
+  gameOver = false;
+  player.pos = createVector(width / 2, height - 50);
+  enemies = [];
+}
+
+class Player {
+  constructor() {
+    this.pos = createVector(width / 2, height - 50);
+    this.vel = createVector(0, 0);
+    this.acc = createVector(0, 0.3);
+    this.speed = 5;
   }
-  if (keyCode === DOWN_ARROW) {
-    vy = 2; // Add this line to make the ball go down when the down arrow key is pressed
+
+  jump() {
+    this.vel.y = -10;
   }
-  if (keyCode === ENTER) {
-    gameStarted = true; // Игра начинается, когда нажата клавиша Enter
+
+  update() {
+    this.vel.add(this.acc);
+    this.pos.add(this.vel);
+
+    if (this.pos.y > height - 50) {
+      this.pos.y = height - 50;
+      this.vel.y = 0;
+    }
+
+    if (leftKeyPressed) {
+      this.pos.x -= this.speed;
+    }
+
+    if (rightKeyPressed) {
+      this.pos.x += this.speed;
+    }
+
+    this.pos.x = constrain(this.pos.x, 0, width);
+  }
+
+  show() {
+    fill(255);
+    ellipse(this.pos.x, this.pos.y, 50, 50);
+  }
+
+  shoot() {
+    if (spaceKeyPressed && millis() - lastBulletTime > bulletCooldown) {
+      
+      bullets.push(new Bullet(this.pos.x, this.pos.y));
+      lastBulletTime = millis(); 
+    }
+  }
+
+  hits(enemy) {
+    let d = dist(this.pos.x, this.pos.y, enemy.pos.x, enemy.pos.y);
+    return d < 50;
+  }
+
+}
+
+class Enemy {
+  constructor() {
+    this.pos = createVector(random(width), random(-500, -50));
+    this.vel = createVector(0, random(1, 3));
+  }
+
+  update() {
+    this.pos.add(this.vel);
+    if (this.pos.y > height + 50) {
+      this.pos.y = random(-500, -50);
+      this.pos.x = random(width);
+    }
+  }
+
+  show() {
+    image(enemyImg, this.pos.x, this.pos.y, 50, 50);
+  }
+}
+
+class Bullet {
+  constructor(x, y) {
+    this.pos = createVector(x, y);
+    this.vel = createVector(0, -5);
+    this.size = 20; 
+  }
+
+  update() {
+    this.pos.add(this.vel);
+    if (this.pos.y < 0) {
+      bullets.splice(bullets.indexOf(this), 1);
+    }
+  }
+
+  show() {
+    image(bulletImg, this.pos.x - this.size / 2, this.pos.y - this.size / 2, this.size, this.size); 
+  }
+
+  hits(enemy) {
+    let d = dist(this.pos.x, this.pos.y, enemy.pos.x, enemy.pos.y);
+    return d < 25; 
   }
 }
